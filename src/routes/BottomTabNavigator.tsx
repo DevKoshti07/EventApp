@@ -57,14 +57,14 @@ export default function BottomTabNavigator() {
             })}
         >
             <BottomTab.Screen
-                name={navigationKeys.Search}
-                component={Search}
-                options={{ tabBarLabel: 'Search' }}
-            />
-            <BottomTab.Screen
                 name={navigationKeys.EventList}
                 component={EventList}
                 options={{ tabBarLabel: 'Events' }}
+            />
+            <BottomTab.Screen
+                name={navigationKeys.Search}
+                component={Search}
+                options={{ tabBarLabel: 'Search' }}
             />
             <BottomTab.Screen
                 name={navigationKeys.Favourites}

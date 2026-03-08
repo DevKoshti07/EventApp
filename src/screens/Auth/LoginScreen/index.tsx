@@ -1,8 +1,13 @@
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Image, StatusBar, ActivityIndicator } from 'react-native'
-import React, { useState } from 'react'
+import {
+    StyleSheet, Text, View, TouchableOpacity, Image,
+    StatusBar, ActivityIndicator, KeyboardAvoidingView,
+    ScrollView, Platform
+} from 'react-native'
+import React, { useRef, useState } from 'react'
+import { TextInput } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AppColors } from '../../../theme/AppColors'
-import { AppHeight, AppMargin, AppShadow, WindowHeight } from '../../../constants/commonStyle'
+import { AppMargin, WindowHeight } from '../../../constants/commonStyle'
 import { Fonts, FontSize } from '../../../assets/fonts'
 import { Images } from '../../../assets/images'
 import { Icons } from '../../../assets/icons'
@@ -13,14 +18,15 @@ import APIendPoints from '../../../services/API/endpoints'
 import { _showToast } from '../../../services/UIs/toastConfig'
 import { useAppDispatch } from '../../../hooks/useRedux'
 import { setIsLogin, setUserData } from '../../../store/reducers/authSlice'
+import AppTextInput from '../../../components/AppTextInput'
 
 export default function LoginScreen() {
 
     const dispatch = useAppDispatch();
+    const passwordRef = useRef<TextInput>(null);
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
     const validateAndLogin = () => {
@@ -54,8 +60,15 @@ export default function LoginScreen() {
     const apiLogin = async (loginParams: any) => {
         setIsLoading(true);
         try {
-            const response: any = await APIMethods.post(APIendPoints.LOGIN, loginParams);
-            if (response?.statusCode == 200) {
+            const formData = new FormData();
+            formData.append('email', loginParams.email);
+            formData.append('password', loginParams.password);
+
+            const response: any = await APIMethods.post(APIendPoints.LOGIN, formData);
+            console.log('[ Login Response ] >>>>', response);
+
+            const statusCode = response?.statusCode ?? response?.StatusCode ?? response?.status;
+            if (statusCode == 200) {
                 dispatch(setUserData(response?.result ?? null));
                 dispatch(setIsLogin(true));
                 _showToast('Login Success', 'success');
@@ -64,7 +77,7 @@ export default function LoginScreen() {
                     NavAction.reset(0, [{ name: navigationKeys.BottomTabNavigator }]);
                 }, 1000);
             } else {
-                _showToast(response?.data?.message ?? 'Login failed. Please try again.', 'error');
+                _showToast(response?.data?.message ?? response?.message ?? 'Login failed. Please try again.', 'error');
             }
         } catch (error) {
             console.log(error);
@@ -76,97 +89,91 @@ export default function LoginScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <StatusBar />
+            <StatusBar barStyle="dark-content" backgroundColor={AppColors.basicWhite} />
 
-            <View style={styles.topContainer}>
-                <Text style={styles.appTitle}>Plie</Text>
-                <Image source={Images.imgPicture} style={styles.imgStyle} />
-            </View>
+            <KeyboardAvoidingView
+                style={styles.keyboardView}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+            >
+                <ScrollView
+                    contentContainerStyle={styles.scrollContent}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                    bounces={false}
+                >
+                    <View style={styles.topContainer}>
+                        <Text style={styles.appTitle}>Plie</Text>
+                        <Image source={Images.imgPicture} style={styles.imgStyle} />
+                    </View>
 
-            <View style={styles.contentContainer}>
-                <View style={styles.inputContainer}>
-                    <Text style={styles.inputLabel}>Email</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="email@email.com"
-                        placeholderTextColor="#999"
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        value={email}
-                        onChangeText={setEmail}
-                    />
-                </View>
+                    <View style={styles.contentContainer}>
+                        <AppTextInput
+                            label="Email"
+                            placeholder="email@email.com"
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            returnKeyType="next"
+                            value={email}
+                            onChangeText={setEmail}
+                            onSubmitEditing={() => passwordRef.current?.focus()}
+                        />
 
-                <View style={styles.inputContainer}>
-                    <Text style={styles.inputLabel}>Password</Text>
-                    <View style={styles.passwordWrapper}>
-                        <TextInput
-                            style={styles.passwordInput}
+                        <AppTextInput
+                            ref={passwordRef}
+                            label="Password"
                             placeholder="Password"
-                            placeholderTextColor="#999"
-                            secureTextEntry={!showPassword}
+                            isPassword
+                            returnKeyType="done"
+                            containerStyle={styles.passwordContainer}
                             value={password}
                             onChangeText={setPassword}
+                            onSubmitEditing={validateAndLogin}
                         />
-                        <TouchableOpacity
-                            style={styles.eyeButton}
-                            onPress={() => setShowPassword(prev => !prev)}
-                        >
-                            <Image
-                                source={showPassword ? Icons.icnEyeShow : Icons.icnEyeHide}
-                                style={styles.eyeIcon}
-                            />
+
+                        <TouchableOpacity style={styles.forgotPasswordContainer}>
+                            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                         </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[styles.signInContainer, isLoading && styles.signInContainerDisabled]}
+                            onPress={validateAndLogin}
+                            disabled={isLoading}
+                        >
+                            {isLoading
+                                ? <ActivityIndicator color="#fff" size="small" />
+                                : <Text style={styles.signInText}>Sign In</Text>
+                            }
+                        </TouchableOpacity>
+
+                        <View style={styles.signUpContainer}>
+                            <Text style={styles.signUpText}>Not a member? </Text>
+                            <TouchableOpacity>
+                                <Text style={styles.signUpLink}>Sign Up Here</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.dividerContainer}>
+                            <View style={styles.dividerLine} />
+                            <Text style={styles.dividerText}>or Sign In with:</Text>
+                            <View style={styles.dividerLine} />
+                        </View>
+
+                        <View style={styles.socialContainer}>
+                            <TouchableOpacity style={styles.socialButton}>
+                                <Image source={Icons.icnGoogle} style={styles.socialIconImage} />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.socialButton}>
+                                <Image source={Icons.icnApple} style={styles.socialIconImage} />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.socialButton}>
+                                <Image source={Icons.icnFacebook} style={styles.socialIconImage} />
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                </View>
-
-                <TouchableOpacity style={styles.forgotPasswordContainer}>
-                    <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.signInContainer, isLoading && styles.signInContainerDisabled]}
-                    onPress={validateAndLogin}
-                    disabled={isLoading}
-                >
-                    {isLoading
-                        ? <ActivityIndicator color="#fff" size="small" />
-                        : <Text style={styles.signInText}>Sign In</Text>
-                    }
-                </TouchableOpacity>
-
-                <View style={styles.signUpContainer}>
-                    <Text style={styles.signUpText}>Not a member? </Text>
-                    <TouchableOpacity>
-                        <Text style={styles.signUpLink}>Sign Up Here</Text>
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.dividerContainer}>
-                    <View style={styles.dividerLine} />
-                    <Text style={styles.dividerText}>or Sign In with:</Text>
-                    <View style={styles.dividerLine} />
-                </View>
-
-                <View style={styles.socialContainer}>
-                    <TouchableOpacity style={styles.socialButton}>
-                        <View style={styles.socialIcon}>
-                            <Image source={Icons.icnGoogle} style={styles.socialIconImage} />
-                        </View>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.socialButton}>
-                        <View style={styles.socialIcon}>
-                            <Image source={Icons.icnApple} style={styles.socialIconImage} />
-                        </View>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.socialButton}>
-                        <View style={styles.socialIcon}>
-                            <Image source={Icons.icnFacebook} style={styles.socialIconImage} />
-                        </View>
-                    </TouchableOpacity>
-                </View>
-            </View>
+                </ScrollView>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     )
 }
@@ -174,7 +181,13 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: AppColors.basicWhite,
+    },
+    keyboardView: {
+        flex: 1,
+    },
+    scrollContent: {
+        flexGrow: 1,
     },
     topContainer: {
         backgroundColor: AppColors.basicGray,
@@ -184,56 +197,45 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: AppMargin._40,
     },
+    appTitle: {
+        fontSize: FontSize._40,
+        fontFamily: Fonts.BOLD,
+        color: AppColors.basicBlack,
+        textAlign: 'center',
+    },
+    imgStyle: {
+        width: 50,
+        height: 50,
+        resizeMode: 'contain',
+    },
     contentContainer: {
         flex: 1,
         paddingHorizontal: AppMargin._50,
         paddingTop: AppMargin._20,
+        paddingBottom: AppMargin._40,
     },
-    appTitle: {
-        fontSize: FontSize._40,
-        fontFamily: Fonts.BOLD,
-        color: '#000',
-        textAlign: 'center',
-    },
-    inputContainer: {
-        marginBottom: 20,
-    },
-    inputLabel: {
-        fontSize: FontSize._14,
-        fontFamily: Fonts.MEDIUM,
-        color: '#666',
-        marginBottom: 8,
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: '#e0e0e0',
-        borderRadius: 8,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        fontSize: 16,
-        color: '#000',
-        backgroundColor: '#f8f8f8',
-        ...AppShadow
+    passwordContainer: {
+        marginTop: AppMargin._20,
     },
     forgotPasswordContainer: {
         alignItems: 'flex-end',
-        marginBottom: 20,
+        marginBottom: AppMargin._20,
+        marginTop: AppMargin._10,
     },
     forgotPasswordText: {
-        color: '#666',
-        fontSize: FontSize._14,
+        color: AppColors.basicBlack,
+        fontSize: FontSize._12,
         fontFamily: Fonts.MEDIUM,
     },
     signInContainer: {
         backgroundColor: AppColors.primary100,
-        borderRadius: 25,
-        paddingVertical: 14,
-        paddingHorizontal: 40,
+        borderRadius: 4,
+        paddingVertical: AppMargin._10,
+        paddingHorizontal: AppMargin._30,
         alignSelf: 'flex-end',
         alignItems: 'center',
         justifyContent: 'center',
-        minWidth: 130,
-        marginBottom: 16,
+        marginBottom: AppMargin._20,
     },
     signInContainerDisabled: {
         opacity: 0.7,
@@ -243,66 +245,26 @@ const styles = StyleSheet.create({
         fontSize: FontSize._16,
         fontFamily: Fonts.MEDIUM,
     },
-    passwordWrapper: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#e0e0e0',
-        borderRadius: 8,
-        backgroundColor: '#f8f8f8',
-        ...AppShadow,
-    },
-    passwordInput: {
-        flex: 1,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        fontSize: 16,
-        color: '#000',
-    },
-    eyeButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 12,
-    },
-    eyeIcon: {
-        width: 20,
-        height: 20,
-        resizeMode: 'contain',
-        tintColor: '#999',
-    },
-    eyeIconActive: {
-        tintColor: '#333',
-    },
-    signInButton: {
-        backgroundColor: '#007AFF',
-        borderRadius: 8,
-        paddingVertical: 16,
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    signInButtonText: {
-        color: '#fff',
-        fontSize: FontSize._16,
-        fontFamily: Fonts.MEDIUM,
-    },
     signUpContainer: {
         flexDirection: 'row',
-        justifyContent: 'center',
-        marginBottom: 40,
+        justifyContent: 'flex-end',
+        marginBottom: AppMargin._20,
     },
     signUpText: {
-        color: '#666',
-        fontSize: FontSize._14,
+        color: AppColors.basicBlack,
+        fontSize: FontSize._12,
         fontFamily: Fonts.MEDIUM,
     },
     signUpLink: {
-        color: '#007AFF',
-        fontSize: FontSize._14,
+        color: AppColors.primary100,
+        fontSize: FontSize._12,
         fontFamily: Fonts.MEDIUM,
     },
     dividerContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 30,
+        marginTop: 50,
+        marginBottom: 20,
     },
     dividerLine: {
         flex: 1,
@@ -325,20 +287,6 @@ const styles = StyleSheet.create({
         height: 50,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    socialIcon: {
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    socialIconText: {
-        fontSize: 24,
-        fontWeight: '600',
-        color: '#666',
-    },
-    imgStyle: {
-        width: 50,
-        height: 50,
-        resizeMode: 'contain',
     },
     socialIconImage: {
         width: 24,

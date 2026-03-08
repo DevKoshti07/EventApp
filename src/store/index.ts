@@ -9,7 +9,7 @@ import homeScreenDataReducer from './reducers/homeScreenDataSlice';
 const persistConfig = {
     key: 'root',
     storage: AsyncStorage,
-    whitelist: ['auth'], // only auth is persisted across app restarts
+    whitelist: ['auth',],
 };
 
 const rootReducer = combineReducers({
@@ -32,6 +32,5 @@ export const store = configureStore({
 
 export const persistor = persistStore(store);
 
-// Infer types from store
 export type RootState = ReturnType<typeof rootReducer>;
 export type AppDispatch = typeof store.dispatch;

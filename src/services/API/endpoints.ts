@@ -1,5 +1,5 @@
 const APIendPoints = {
-    LOGIN: '/account/login',
+    LOGIN: '/login',
     REGISTER: '/account/register',
     FORGOT_PASSWORD: '/account/forgot-password',
     RESET_PASSWORD: '/account/reset-password',
